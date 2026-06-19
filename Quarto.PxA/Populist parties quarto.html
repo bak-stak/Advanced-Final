@@ -111,8 +111,8 @@ div.csl-indent {
 </header>
 
 
-<section id="research-question-and-hypothesis" class="level3">
-<h3 class="anchored" data-anchor-id="research-question-and-hypothesis">Research question and hypothesis</h3>
+<section id="research-question-and-hypothesis" class="level2">
+<h2 class="anchored" data-anchor-id="research-question-and-hypothesis">Research question and hypothesis</h2>
 <section id="italian-populist-parties-rise-and-fall" class="level4">
 <h4 class="anchored" data-anchor-id="italian-populist-parties-rise-and-fall"><em>Italian populist parties rise and fall</em></h4>
 <p>In the 2018 Italian political elections 5 star movement and League for Salvini premier were the biggest winners obtaining respectively 32% and 17% of the votes; these two can be considered the main populist Italian parties . The dissatisfaction toward political parties and their system was one of the main driver for their rise <span class="citation" data-cites="chiaramonte2018">(<a href="#ref-chiaramonte2018" role="doc-biblioref">Chiaramonte et al., 2018</a>)</span> .</p>
@@ -134,8 +134,8 @@ div.csl-indent {
 <p><strong>H2</strong>: The positive effect of institutional distrust on populist voting will be weaker among younger cohorts (18-34), who are more likely to convert distrust into abstention rather than partisan choice.</p>
 </section>
 </section>
-<section id="data-and-variable-operationalization" class="level3">
-<h3 class="anchored" data-anchor-id="data-and-variable-operationalization">Data and variable operationalization <!--  150 words --></h3>
+<section id="data-and-variable-operationalization" class="level2">
+<h2 class="anchored" data-anchor-id="data-and-variable-operationalization">Data and variable operationalization <!--  150 words --></h2>
 <section id="data-source" class="level4">
 <h4 class="anchored" data-anchor-id="data-source"><em>Data source</em></h4>
 <p>To operationalize distrust and its relation with voting behavior the ITANES post-electoral data from 2022 elections <span class="citation" data-cites="vezzoni2023">(<a href="#ref-vezzoni2023" role="doc-biblioref">Vezzoni et al., 2023</a>)</span> has been employed; it provides individual level observations for 4696 individuals.</p>
@@ -155,8 +155,8 @@ div.csl-indent {
 <p>More information about employed items and their item-code are available in <a href="#sec-appendixB">appendix B</a>.</p>
 </section>
 </section>
-<section id="model-choice-and-statistical-justification" class="level3">
-<h3 class="anchored" data-anchor-id="model-choice-and-statistical-justification">Model choice and statistical justification <!-- 300 words --></h3>
+<section id="model-choice-and-statistical-justification" class="level2">
+<h2 class="anchored" data-anchor-id="model-choice-and-statistical-justification">Model choice and statistical justification <!-- 300 words --></h2>
 <section id="main-model" class="level4">
 <h4 class="anchored" data-anchor-id="main-model"><em>Main model</em></h4>
 <p>To test H1 a logistic regression model has been employed for both populist vote and abstention. This kind of regression is appropriate as it models the outcome as a probability within the [0,1] range and both the dependent variables are binary. Main independent variable was institutional distrust.</p>
@@ -170,18 +170,154 @@ div.csl-indent {
 <p>Lastly a control for Macro Region was included, to account for persistent territorial differences in voting behavior.</p>
 </section>
 </section>
-<section id="results" class="level3">
-<h3 class="anchored" data-anchor-id="results">Results <!-- 500 words --></h3>
-<section id="institutional-distrust-on-populist-vote-and-abstension" class="level4">
-<h4 class="anchored" data-anchor-id="institutional-distrust-on-populist-vote-and-abstension"><em>Institutional distrust on populist vote and abstension</em></h4>
-<p>The pure</p>
+<section id="results" class="level2">
+<h2 class="anchored" data-anchor-id="results">Results <!-- 500 words --></h2>
+<section id="institutional-distrust-on-populist-vote-and-abstention" class="level4">
+<h4 class="anchored" data-anchor-id="institutional-distrust-on-populist-vote-and-abstention"><em>Institutional distrust on populist vote and abstention</em></h4>
+<p>The first univariate model aimed to capture the effect of distrust on populism and abstention. Both resulted significant but the coefficient for abstention was substantially larger. The coefficients for logistic regression are presented in log-odds, a 1 point increase in distrust would increase the log-odds of voting populist of 0.05, though this is a scale that lacks intuitive interpretability. A common approximation is to use the “divide by 4 rule” dividing the parameter by 4 to have the slope of the curve in its steepest part around 0.5 probability, however, since the predicted probabilities lies below that threshold the marginal effect would be overestimated.</p>
+<div class="cell">
+<div class="cell-output-display">
+<!-- preamble start -->
+
+    <script src="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.js"></script>
+
+    <script>
+      // Create table-specific functions using external factory
+      const tableFns_o1heglodjpdziws6bgmt = TinyTable.createTableFunctions("tinytable_o1heglodjpdziws6bgmt");
+      // tinytable span after
+      window.addEventListener('load', function () {
+          var cellsToStyle = [
+            // tinytable style arrays after
+          { positions: [ { i: '7', j: 2 }, { i: '7', j: 3 } ], css_id: 'tinytable_css_i5upk9xnny72e5uus1jz',}, 
+          { positions: [ { i: '4', j: 2 }, { i: '4', j: 3 } ], css_id: 'tinytable_css_bq8qpuu23jueib7vdll0',}, 
+          { positions: [ { i: '1', j: 2 }, { i: '2', j: 2 }, { i: '3', j: 2 }, { i: '5', j: 2 }, { i: '6', j: 2 }, { i: '1', j: 3 }, { i: '2', j: 3 }, { i: '3', j: 3 }, { i: '5', j: 3 }, { i: '6', j: 3 } ], css_id: 'tinytable_css_0b7y49ioutsnch7eygej',}, 
+          { positions: [ { i: '0', j: 2 }, { i: '0', j: 3 } ], css_id: 'tinytable_css_4t7n9lcbumw1h0sjfd8t',}, 
+          { positions: [ { i: '7', j: 1 } ], css_id: 'tinytable_css_9z64z7va1da2mr20lqsv',}, 
+          { positions: [ { i: '4', j: 1 } ], css_id: 'tinytable_css_jog9qqyszjzvukopm652',}, 
+          { positions: [ { i: '1', j: 1 }, { i: '2', j: 1 }, { i: '3', j: 1 }, { i: '5', j: 1 }, { i: '6', j: 1 } ], css_id: 'tinytable_css_s88k0rc63yh7ezte9e4f',}, 
+          { positions: [ { i: '0', j: 1 } ], css_id: 'tinytable_css_cnvrww77d2330u21viyo',}, 
+          ];
+
+          // Loop over the arrays to style the cells
+          cellsToStyle.forEach(function (group) {
+              group.positions.forEach(function (cell) {
+                  tableFns_o1heglodjpdziws6bgmt.styleCell(cell.i, cell.j, group.css_id);
+              });
+          });
+      });
+    </script>
+
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/vincentarelbundock/tinytable@main/inst/tinytable.css">
+    <style>
+    /* tinytable css entries after */
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_i5upk9xnny72e5uus1jz, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_i5upk9xnny72e5uus1jz {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: center }
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_bq8qpuu23jueib7vdll0, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_bq8qpuu23jueib7vdll0 {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: center }
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_0b7y49ioutsnch7eygej, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_0b7y49ioutsnch7eygej { text-align: center }
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_4t7n9lcbumw1h0sjfd8t, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_4t7n9lcbumw1h0sjfd8t {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: center }
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_9z64z7va1da2mr20lqsv, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_9z64z7va1da2mr20lqsv {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.08em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: left }
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_jog9qqyszjzvukopm652, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_jog9qqyszjzvukopm652 {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 0; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.1em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: left }
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_s88k0rc63yh7ezte9e4f, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_s88k0rc63yh7ezte9e4f { text-align: left }
+    #tinytable_o1heglodjpdziws6bgmt td.tinytable_css_cnvrww77d2330u21viyo, #tinytable_o1heglodjpdziws6bgmt th.tinytable_css_cnvrww77d2330u21viyo {  position: relative; --border-bottom: 1; --border-left: 0; --border-right: 0; --border-top: 1; --line-color-bottom: var(--tt-line-color); --line-color-left: var(--tt-line-color); --line-color-right: var(--tt-line-color); --line-color-top: var(--tt-line-color); --line-width-bottom: 0.05em; --line-width-left: 0.1em; --line-width-right: 0.1em; --line-width-top: 0.08em; --trim-bottom-left: 0%; --trim-bottom-right: 0%; --trim-left-bottom: 0%; --trim-left-top: 0%; --trim-right-bottom: 0%; --trim-right-top: 0%; --trim-top-left: 0%; --trim-top-right: 0%; ; text-align: left }
+    </style>
+    <div class="container">
+      <table class="tinytable" id="tinytable_o1heglodjpdziws6bgmt" style="width: auto; margin-left: auto; margin-right: auto;" data-quarto-disable-processing="true">
+        
+        <thead>
+              <tr>
+                <th scope="col" data-row="0" data-col="1"> </th>
+                <th scope="col" data-row="0" data-col="2">Populist vote model</th>
+                <th scope="col" data-row="0" data-col="3">Abstension model</th>
+              </tr>
+        </thead>
+        <tfoot><tr><td colspan="3">+ p &lt; 0.1, * p &lt; 0.05, ** p &lt; 0.01, *** p &lt; 0.001</td></tr></tfoot>
+        <tbody>
+                <tr>
+                  <td data-row="1" data-col="1">(Intercept)</td>
+                  <td data-row="1" data-col="2">-1.803***</td>
+                  <td data-row="1" data-col="3">-3.040***</td>
+                </tr>
+                <tr>
+                  <td data-row="2" data-col="1"></td>
+                  <td data-row="2" data-col="2">(0.117)</td>
+                  <td data-row="2" data-col="3">(0.143)</td>
+                </tr>
+                <tr>
+                  <td data-row="3" data-col="1">Institutional_distrust</td>
+                  <td data-row="3" data-col="2">0.050**</td>
+                  <td data-row="3" data-col="3">0.204***</td>
+                </tr>
+                <tr>
+                  <td data-row="4" data-col="1"></td>
+                  <td data-row="4" data-col="2">(0.017)</td>
+                  <td data-row="4" data-col="3">(0.020)</td>
+                </tr>
+                <tr>
+                  <td data-row="5" data-col="1">Num.Obs.</td>
+                  <td data-row="5" data-col="2">4498</td>
+                  <td data-row="5" data-col="3">4498</td>
+                </tr>
+                <tr>
+                  <td data-row="6" data-col="1">F</td>
+                  <td data-row="6" data-col="2">8.260</td>
+                  <td data-row="6" data-col="3">104.599</td>
+                </tr>
+                <tr>
+                  <td data-row="7" data-col="1">RMSE</td>
+                  <td data-row="7" data-col="2">0.39</td>
+                  <td data-row="7" data-col="3">0.35</td>
+                </tr>
+        </tbody>
+      </table>
+    </div>
+<!-- hack to avoid NA insertion in last line -->
+</div>
+</div>
+<p>To interpet these coefficients two operations were performed: (1) exponentiating the logistic coefficient to obtain an odds ratio; (2) computing the derivative at the average value of institutional distrust in ITANES data to evaluate the predictive difference.</p>
+<ul>
+<li>Populist vote: the exponentiation lead to an odds ratio of 1.05, this indicate that a unit increase in institutional distrust increases the odds of voting populist of 5.1%. Moreover at the mean distrust level (6.2) the probability of voting populist is 18.3% with a slope of 0.008. From the graphical representation below it can be appreciated the approximately constant marginal effect of distrust on populist vote.</li>
+</ul>
+<div class="cell">
+<div class="cell-output-display">
+<div id="fig-pop1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-pop1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="Populist-parties-quarto_files/figure-html/fig-pop1-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-pop1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;1: logistic regression of populist vote on distrust level
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<ul>
+<li>Abstention: as can be appreciated immediately from the graph comparison the effect of distrust on abstention is way stronger, starting from below 5% for distrust = 0, but with increasing marginal effects. The slope at the mean distrust level is 0.026, meaning that a 1 point increment at 6.2 would increment the probability of abstaining 2.6%</li>
+</ul>
+<div class="cell">
+<div class="cell-output cell-output-stderr">
+<pre><code>Data were 'prettified'. Consider using `terms="Institutional_distrust
+  [all]"` to get smooth plots.</code></pre>
+</div>
+<div class="cell-output-display">
+<div id="fig-abs1" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-abs1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="Populist-parties-quarto_files/figure-html/fig-abs1-1.png" class="img-fluid figure-img" width="672">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-abs1-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;2: Logistic regression of abstention on institutional distrust
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
 </section>
 </section>
-<section id="interpretation-and-substantive-insights" class="level3">
-<h3 class="anchored" data-anchor-id="interpretation-and-substantive-insights">Interpretation and substantive insights <!-- 300 words --></h3>
+<section id="interpretation-and-substantive-insights" class="level2">
+<h2 class="anchored" data-anchor-id="interpretation-and-substantive-insights">Interpretation and substantive insights <!-- 300 words --></h2>
 </section>
-<section id="limitations-and-reflection" class="level3">
-<h3 class="anchored" data-anchor-id="limitations-and-reflection">Limitations and reflection <!-- 300 words --></h3>
+<section id="limitations-and-reflection" class="level2">
+<h2 class="anchored" data-anchor-id="limitations-and-reflection">Limitations and reflection <!-- 300 words --></h2>
 
 
 <section id="bibliography" class="level4 unnumbered">

@@ -24,11 +24,13 @@ library(tidyverse)
 library(lubridate) #used to extract year from data_nascita
 library(stargazer)
 library(sjPlot)
+library(modelsummary)
 ```
 
 ```{r}
 #| include: FALSE
 #| label: FULL CODE
+#| cache: true
 
 #load the ITANES database & keep interest VARs----
 
@@ -570,6 +572,7 @@ Institutional distrust is composed by three items: trust toward parliament, gove
 ```{r}
 #| include: false
 #| label: Indexes creation
+#| cache: true
 
 # Create a var vector for convenience
 
@@ -722,6 +725,7 @@ pop_age <- left_join(trust_rescaled, populist_df, by = join_by(seriale))
 ```{r}
 #| include: false
 #| label: regions-coding
+#| cache: true
 
 Regions_df <- ITANES_2022_Post_electoral%>%
   mutate(Macro_region = case_when(
@@ -759,6 +763,7 @@ Lastly a control for Macro Region was included, to account for persistent territ
 ```{r}
 #| label: Full-Model 
 #| include: false
+#| cache: true
 
 #Addittive models-----
 
@@ -1067,9 +1072,97 @@ abstention <- modelsummary(
 
 ```
 
-#### *Institutional distrust on populist vote and abstension*
+#### *Institutional distrust on populist vote and abstention*
 
-The pure
+The first univariate model aimed to capture the effect of distrust on populism and abstention. Both resulted significant but the coefficient for abstention was substantially larger. The coefficients for logistic regression are presented in log-odds, a 1 point increase in distrust would increase the log-odds of voting populist of 0.05, though this is a scale that lacks intuitive interpretability. A common approximation is to use the "divide by 4 rule" dividing the parameter by 4 to have the slope of the curve in its steepest part around 0.5 probability, however, since the predicted probabilities lies below that threshold the marginal effect would be overestimated.
+
+```{r}
+#| echo: false
+#| label: tab-plain-merged
+#| tab-cap: "Results for logistic regression of institutional distrust on populist vote and abstension" 
+
+Complete_pooling <- glm(populist_vote ~ Institutional_distrust,
+                        family = binomial(link = "logit"),
+                        data = pop_age)
+
+CP_abstention <- glm(abstention ~ Institutional_distrust,
+                     family = binomial(link = "logit"),
+                     data = pop_age)
+
+modelsummary(list(
+  "Populist vote model" = Complete_pooling,
+  "Abstension model" = CP_abstention
+),
+  stars = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo"
+)
+```
+
+To interpet these coefficients two operations were performed: (1) exponentiating the logistic coefficient to obtain an odds ratio; (2) computing the derivative at the average value of institutional distrust in ITANES data to evaluate the predictive difference.
+
+```{r}
+#| label: Coefficients interpretation
+#| include: false
+
+
+library(boot)
+
+# Populism
+
+exp(0.053) # Result 1.05: for an increase of 1 in distrust odds of voting populist
+           # increase of 5.1%
+
+# Mean value of distrust is 6.2
+# logit-1 to compute probability at the mean point
+inv.logit(-1.822 + 0.053 * 6.2) #Result = 18.3%; probs at the mean point
+
+#Derivative for % variation of 1 at the mean point (beta * P * (1-p))
+0.053 * 0.183 * (1 - 0.183) # 0.8%: an increase of 1 point in distrust at 6.2 leads to and increase 0f 0.8% of voting populist
+
+# Abstention
+
+exp(0.209) # Result 1.23: for an increase of 1 in distrust odds of abstaining
+           # increase of 20.9%
+
+# Mean value of distrust is 6.2
+# logit-1 to compute probability at the mean point
+inv.logit(-3.04 + 0.209 * 6.2) #Result = 14.9%; probs at the mean point
+
+#Derivative for % variation of 1 at the mean point (beta * P * (1-p))
+0.209 * 0.149 * (1 - 0.149) # 2.7% : an increase of 1 point in distrust at 6.2 leads to and increase 0f 2.7% of voting populist
+
+```
+
+-   Populist vote: the exponentiation lead to an odds ratio of 1.05, this indicate that a unit increase in institutional distrust increases the odds of voting populist of 5.1%. Moreover at the mean distrust level (6.2) the probability of voting populist is 18.3% with a slope of 0.008. From the graphical representation below it can be appreciated the approximately constant marginal effect of distrust on populist vote.
+
+```{r}
+#| label: fig-pop1
+#| fig-cap: "logistic regression of populist vote on distrust level"
+#| echo: false
+#| warning: false
+
+plot_model(Complete_pooling, 
+           type = "pred", 
+           terms = c("Institutional_distrust"),
+) +
+  theme_minimal()
+```
+
+-   Abstention: as can be appreciated immediately from the graph comparison the effect of distrust on abstention is way stronger, starting from below 5% for distrust = 0, but with increasing marginal effects. The slope at the mean distrust level is 0.026, meaning that a 1 point increment at 6.2 would increment the probability of abstaining 2.6%
+
+```{r}
+#| label: fig-abs1
+#| fig-cap: "Logistic regression of abstention on institutional distrust"
+#| echo: false
+
+plot_model(CP_abstention, 
+           type = "pred", 
+           terms = "Institutional_distrust",
+) +
+  theme_minimal()
+
+
+```
 
 ## Interpretation and substantive insights <!-- 300 words -->
 
