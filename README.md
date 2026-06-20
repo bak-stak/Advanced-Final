@@ -1,15 +1,20 @@
 ## Advanced multivariate analysis final 
 
-Italian 2018 elections have shown the populist phenomenon establish itself definitively, 5 Star Movement and League for Salvini premier, 
-the two main populist parties, emerged obtaining respectively 17% and 32% of the votes. Despite coming from totally different political areas, 
-the two formed the so-called “Yellow-green government” that lasted till summer 2019. The dissatisfaction toward political parties and their system 
-was one of the main driver for their rise.
-4 years later these 2 parties fell: 5 star movement obtained about 15,43% but the worst fall was the League one, collapsing to 8.8%, 
-scaled down by the rise of Giorgia Meloni and Brothers of Italy. 
-Moreover 2022 elections have seen the lowest turnout ever (falling down by 9 percentual points from 72.9% to 63.9%). 
+This is a repository for the Advanced muultivariate analyisis final project of Giovanni Bacchiega
+The title of the paper is "Populist parties: still a home for the politically distrustful, or a faded and institutionalized phenomenon?"
+The aim is to study how institutional distrust translated to populist vote and abstention in 2022 political elections, with a specific attention to how that worked for each age cohort. 
 
-With this study I don’t want to analyze the electoral flows from 2018 to 2022 but instead I want to check the grade with which these two parties, 
-the main Italian populist parties (as showed in both CHES and POPPA expert surveys), are still able to answer the distrustful and protesting political 
-supply and whether it changes for age cohorts.
+The repository is structured as follows:
 
-#Q1: Research question: how much the distrust toward political and party system translates in voting for populist parties? How does It changes for different cohorts? 
+  - Data: contain the data employed for the analysis in .DTA format; the dataset used is the           post_electoral survey 2022 by ITANES
+  - Documentation: a brief pre-registration like document with the initial aim of the study and a     declaration of the use of AI during the study
+  - Paper: the final paper in HTML and PDF versions
+  - Quarto.PxA: the two quarto documents employed for the final stesure of the paper (the final       product is Populist_parties_2, which was created to reorder the file; also all the atachments of the quarto documents are included. NB Some pieces of codes and chunks might differ from the scripts as some changings have been introduced in the last version
+  - Scripts: The whole script used:
+      => Coef function: used to create a function that extracted coefficients from the logistic          regression
+      => Index creation: used to create the distrust index employed
+      => pop-age: the first "full" script; used also stealth democracy as predictor and kept age classes 1 & 2 separated
+      => No_stealth: removed stealth democracy as predictor
+      => Merged age classes 1 & 2: merged age classes
+      => Parallel_multivariate: was an attempt of multivariate before switching to an interaction   model 
+    
