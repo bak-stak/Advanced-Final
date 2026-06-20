@@ -11,6 +11,9 @@ format:
 bibliography: references.bib
 citeproc: true
 csl: "https://raw.githubusercontent.com/citation-style-language/styles/master/apa.csl"
+execute:
+  warning: false
+  message: false
 ---
 
 ```{r}
@@ -25,6 +28,17 @@ library(lubridate) #used to extract year from data_nascita
 library(stargazer)
 library(sjPlot)
 library(modelsummary)
+library(mgcv)
+
+# Coefficient estraction function for logistic
+
+logistic_effects <- function(coef, int, avg) {
+  library(boot)
+  odds_ratio <- exp(coef)
+  p_avg <- inv.logit(int + coef*avg)
+  marginal <- coef*p_avg * (1 - p_avg)
+  print(list(OR = odds_ratio, P = p_avg, ME = marginal))
+}
 ```
 
 ```{r}
@@ -763,56 +777,6 @@ Lastly a control for Macro Region was included, to account for persistent territ
 ```{r}
 #| label: Full-Model 
 #| include: false
-#| cache: true
-
-#Addittive models-----
-
-pop_age$populist_vote <- as.factor(pop_age$populist_vote)
-
-Complete_pooling <- glm(populist_vote ~ Institutional_distrust,
-                        family = binomial(link = "logit"),
-                        data = pop_age)
-
-stargazer(Complete_pooling, type = "text")
-
-plot_model(Complete_pooling, 
-           type = "pred", 
-           terms = c("Institutional_distrust"),
-) +
-  theme_minimal()
-
-#Try it on vote/non vote
-
-CP_abstention <- glm(abstention ~ Institutional_distrust,
-                     family = binomial(link = "logit"),
-                     data = pop_age)
-
-stargazer(CP_abstention, type = "text")
-
-plot_model(CP_abstention, 
-           type = "pred", 
-           terms = "Institutional_distrust",
-) +
-  theme_minimal()
-
-#try fitting the model only on voters (exclude abstention)
-
-no_abs <- pop_age%>%
-  mutate(abstention = as.numeric(abstention))%>%
-  filter(abstention<2)
-
-CP_voters <- glm(populist_vote ~ Institutional_distrust,
-                 family = binomial(link = "logit"),
-                 data = no_abs)
-
-stargazer(CP_voters, type = "text")
-
-plot_model(CP_voters, 
-           type = "pred", 
-           terms = "Institutional_distrust",
-) +
-  theme_minimal()
-
 
 
 # INTERACTION MODEL ----
@@ -823,9 +787,10 @@ pop_age_clean <- pop_age %>%
   filter(Institutional_distrust > 0)%>%
   drop_na() %>%
   mutate(
-    log_distrust = log1p(Institutional_distrust), #without transforming them before sjPlot wouldn't recognize them so we have to perform this now
-    age_class   = as.factor(age_class)
+    age_class = as.factor(age_class),
+    populist_vote = as.factor(populist_vote)
   )
+
 
 # INSTITUIONAL DISTRUST X AGE CLASS
 
@@ -839,7 +804,11 @@ table(pop_age_clean$age_class)
 
 # A solution could be to merge 1 & 2
 
-pop_age_clean$age_class <- relevel(factor(pop_age_clean$age_class), ref = "18-34")
+pop_age_clean <- pop_age_clean %>%
+  mutate(
+    age_class = relevel(factor(age_class), ref = "18-34"),
+    populist_vote = as.factor(populist_vote)
+  )
 
 distrust_x_class <- glm(populist_vote
                         ~ Institutional_distrust
@@ -869,43 +838,8 @@ sjPlot::plot_model(distrust_x_class_abs,
 ) +
   theme_bw()
 
-# GAM - Check the shape of the distribution ----
-
-# A gam is a model that guarantee a high flexibility & calculate non linear regression models
-# we want to use it to study the shape of the relation
-
-library(mgcv)
-
-mod_gam <- gam(populist_vote
-               ~ s(Institutional_distrust)
-               + age_class,
-               family = binomial, data = pop_age_clean)
-
-plot(mod_gam, pages = 1, shade = TRUE)
-
-summary(mod_gam)
-
-# It seems like at a certain point the populist vote decrease for institutional distrust
-# This can suggest that after a certain ceiling non voting become the choice: this could
-# be the reason for our non working models. We can try a model that take institutional
-# distrust till 7/8 and check the significativity of the relation and we can do the same
-# for non vote. Moreover we can impute a GAM for abstention
 
 
-mod_gam <- gam(abstention
-               ~ s(Institutional_distrust)
-               + age_class,
-               family = binomial, data = pop_age)
-
-plot(mod_gam, pages = 1, shade = TRUE)
-
-# Our HP was right abstention explode for really high levels of distrust 
-# Now we can try our CDT (distrust but not so much) model with level lower than 8
-
-# Before starting with our plan we want to check how many high distrust individuals we have
-table(pop_age$Institutional_distrust >= 8)
-
-# 987 is really significant, this means that they have a strong impact on our regression models
 
 # CDT Model -----
 
@@ -1133,7 +1067,7 @@ inv.logit(-3.04 + 0.209 * 6.2) #Result = 14.9%; probs at the mean point
 
 ```
 
--   Populist vote: the exponentiation lead to an odds ratio of 1.05, this indicate that a unit increase in institutional distrust increases the odds of voting populist of 5.1%. Moreover at the mean distrust level (6.2) the probability of voting populist is 18.3% with a slope of 0.008. From the graphical representation below it can be appreciated the approximately constant marginal effect of distrust on populist vote.
+-   Populist vote: the exponentiation lead to an odds ratio of 1.05, this indicate that a unit increase in institutional distrust increases the odds of voting populist of 5.1%. Moreover at the mean distrust level (6.2) the probability of voting populist is 18.3% with a marginal effect at the mean of 0.008. From the graphical representation below it can be appreciated the approximately constant marginal effect of distrust on populist vote.
 
 ```{r}
 #| label: fig-pop1
@@ -1154,6 +1088,7 @@ plot_model(Complete_pooling,
 #| label: fig-abs1
 #| fig-cap: "Logistic regression of abstention on institutional distrust"
 #| echo: false
+#| warning: false
 
 plot_model(CP_abstention, 
            type = "pred", 
@@ -1164,6 +1099,111 @@ plot_model(CP_abstention,
 
 ```
 
+#### ***CDT model***
+
+The results of the prior analysis highlighted a weak coefficient and lower significativeness for populism. To better understand the reason a general addictive model was performed as an explorative model; this has the advantage of not assessing a linear shape and fits the best possible value of y for each value of x.
+
+::: {layout-ncol="2"}
+```{r}
+#| label: fig-GAM_populist-vote
+#| echo: false 
+#| fig-cap: "GAM model for Populist vote"
+#| warning: false
+#| fig-width: 4
+mod_gam_pop <- gam(populist_vote
+               ~ s(Institutional_distrust)
+               + age_class,
+               family = binomial, data = pop_age_clean)
+
+plot(mod_gam_pop, select = 1, shade = TRUE)
+abline(h = 0, col = "red", lty = 2, lwd = 1.5)
+
+
+# It seems like at a certain point the populist vote decrease for institutional distrust
+# This can suggest that after a certain ceiling non voting become the choice: this could
+# be the reason for our non working models. We can try a model that take institutional
+# distrust till 7/8 and check the significativity of the relation and we can do the same
+# for non vote. Moreover we can compute a GAM for abstention
+```
+
+```{r}
+#| label: fig-GAM_abs
+#| echo: false 
+#| fig-cap: "GAM model for abstension"
+#| warning: false
+#| fig-width: 4
+
+mod_gam_abs <- gam(abstention
+               ~ s(Institutional_distrust)
+               + age_class,
+               family = binomial, data = pop_age)
+
+plot(mod_gam_abs, select = 1, shade = TRUE)
+abline(h = 0, col = "red", lty = 2, lwd = 1.5)
+```
+:::
+
+The populist GAM model clearly presents a point in which the relationship between populist vote and distrust reverse its direction in a critical threshold, while the same effect doesn't happen for abstention. GAM centers values around the mean, the values on the y axis are in log-odds. Observation below the 0 have therefore minor probabilities of voting populist/abstaining than the average level of the sample. The lines on the graph floor represent the distribution of the observations.
+
+To check whether the logistic model is well performing till that threshold a new model with observation which presented a level of distrust lower then eight (the critical threshold) was computed and labelled as Critical Distrust Threshold (CDT) model. The changes in the data were substantial as 987 observation presented a high level (\>8) of distrust.
+
+```{r}
+#| label: Tab-cdt 
+#| echo: false 
+#| tab-label: "Logistic regression on observations <8"
+
+
+CDT_df <- pop_age_clean%>%
+  filter(Institutional_distrust <= 8)
+
+CDT <- glm(populist_vote
+             ~ Institutional_distrust,
+             family = binomial(link = "logit"),
+             data = CDT_df)
+
+modelsummary(
+  CDT,
+  stars = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo"
+)
+```
+
+CDT model showed stronger results in significativity and intensity of the effect. P-value, the main measure for significativity, decreased below 0.001, and log-odds were more than doubled. This is reflected across all interpretative metrics: odd ratio increases from 1.05 to 1.14, the probability of voting populist at the sample mean goes from 18.3 to 19.6. Most importantly the marginal effect at the mean increases of 0.013, that means that an increase of 1 point in distrust at that level raises the probability of voting populist by 2.1 percentage points (against the previous 0.8%). These stronger estimates are more consistent with the GAM findings: including high distrust voters in the full model attenuates the positive association observed at lower distrust levels.
+
+```{r}
+#| label: coef-extraction-cdt
+#| include: false
+
+logistic_effects(0.135, -2.251, 6.2)
+
+```
+
+```{r}
+#| label: fig-cdt
+#| echo: false
+#| fig-label: "CDT logistic regression model"
+
+plot_model(CDT, 
+           type = "pred", 
+           terms = "Institutional_distrust",
+) +
+  theme_minimal()
+
+```
+
+#### Age model: additive and interaction
+
+Age classes were then added to the model both through additive and interactions models. The different specifications aim is to compute: (1) for additive model the specific mere effect of age class on populist voting and abstention, (2) for interaction models how each age class act as a moderator for the effect that institutional distrust has on the two dependent variables.
+
+<!-- final regression table: 1. pop-add 2. abs-add 3. pop-int 4. abs-int 5. cdt-add 6. cdt-int -->
+
+```{r}
+#| label: Models performing
+#| include: false
+```
+
+#### Region controlling
+
 ## Interpretation and substantive insights <!-- 300 words -->
 
 ## Limitations and reflection <!-- 300 words -->
@@ -1173,3 +1213,5 @@ plot_model(CP_abstention,
 #### Appendix B {#sec-appendixB .appendix}
 
 #### Bibliography
+
+:::

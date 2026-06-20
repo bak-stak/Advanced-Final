@@ -1,0 +1,1265 @@
+---
+title: "Populist parties: still a home for the politically distrustful, or a faded and institutionalized phenomenon?"
+author: "Giovanni Bacchiega"
+date: today
+format:
+  html:
+    theme: default
+    fontsize: 12pt
+    linestretch: 2
+    toc: true
+bibliography: references.bib
+csl: "https://raw.githubusercontent.com/citation-style-language/styles/master/apa.csl"
+execute:
+  warning: false
+  message: false
+---
+
+```{r}
+#| include: FALSE
+#| label: General library
+
+#Library needed
+
+library(haven) #reading dta file
+library(tidyverse)
+library(lubridate) #used to extract year from data_nascita
+library(stargazer)
+library(sjPlot)
+library(modelsummary)
+library(mgcv)
+
+# Coefficient estraction function for logistic
+
+logistic_effects <- function(coef, int, avg) {
+  library(boot)
+  odds_ratio <- exp(coef)
+  p_avg <- inv.logit(int + coef*avg)
+  marginal <- coef*p_avg * (1 - p_avg)
+  print(list(OR = odds_ratio, P = p_avg, ME = marginal))
+}
+```
+
+```{r}
+#| include: FALSE
+#| label: FULL CODE
+#| cache: true
+
+#load the ITANES database & keep interest VARs----
+
+ITANES_2022_Post_electoral <- read_dta("Itanes2022_POST_release 01_weighted.dta")
+
+ITANES_2022_Post_electoral <- ITANES_2022_Post_electoral%>%
+  mutate(
+    data_pulita = dmy(data_nascita),
+    anno_nascita = year(data_pulita),
+    anno_nascita = if_else(anno_nascita > 2022, anno_nascita - 100, anno_nascita),
+    eta = 2022 - anno_nascita #create age variable 
+  )
+
+#INDEX CREATION----
+
+#We want to create a index for political trust, we will therefore run a FA, on selected trust
+#related items from ITANES data to check wether the items are related
+
+#Load required packages
+
+library(tidyverse)
+library(corrplot)
+library(psych)
+pca_library <- c("corrr", "ggcorrplot", "FactoMineR", "factoextra")
+
+lapply(pca_library, library, character.only = TRUE)
+
+#Keep just relevant VARs
+
+trust_data_NA <- ITANES_2022_Post_electoral%>%
+  select(seriale, Q04b, Q05b, Q05c, Q07a, Q07b, Q07e)%>%
+  mutate(across(-seriale, ~ ifelse(.x >= 50, NA, .x))) %>%
+  mutate( #reverse were needed to put the negative connotation on the high end
+    Q04b = 6 - Q04b,
+    Q05b = 6 - Q05b,
+    Q05c = 6 - Q05c,
+  )
+
+# NA imputation
+
+# Here NA imputation is quite important: we can't just remove NA as we probably
+# are in a MNAR (missing not at random) situation, moreover these are a lot of 
+# items, it would be quite bad to lose all the informations for just 1 NA
+# We can use mice (multiple imputation by chained equations) that take the most
+# similar observation which have a value in the variable of interest
+
+library(mice)
+
+imputation <- mice(trust_data_NA,
+                   m = 1,
+                   method = "pmm",
+                   seed = 123,
+                   printFlag = FALSE)
+
+trust_data <- complete(imputation, 1)
+
+
+#Transform Q06 as numeric
+
+# Create a var vector for convenience
+
+cat_var <- c("Q04b", "Q05b", "Q05c", "Q07a", "Q07b","Q07e") 
+
+# With mixcor we impute a mixed correlation matrix
+
+mixed_cormat <- mixedCor(data = trust_data,
+                         c = cat_var,
+                         smooth = TRUE)
+
+# Plot the correlation 
+
+corrplot(mixed_cormat$rho, method = "number",
+         type = "lower", order = "hclust",
+         tl.col = "black", tl.srt = 45)
+
+# Since there are a lot of strong correlation use pca to determine how many 
+# dimension to use 
+
+eigenvalues <- eigen(mixed_cormat$rho)$values
+
+explained_variance <- (eigenvalues / sum(eigenvalues)) * 100
+
+df_screeplot <- data.frame(
+  Component = 1:length(eigenvalues),
+  Eigenvalues = eigenvalues,
+  Variance = explained_variance
+)
+
+print(df_screeplot)
+
+# We have 3 component with >1 eigenvalue, so for the Kaiser method (keeping PCs)
+# with EV > 1 we would take 3 of them. Anyway, we can also use a screeplot to visualize it
+
+ggplot(df_screeplot, aes(x = as.factor(Component), y = Variance)) +
+  geom_bar(stat = "identity", fill = "steelblue", width = 0.6) +
+  geom_line(aes(x = Component, y = Variance), color = "black", linewidth = 0.8) +
+  geom_point(aes(x = Component, y = Variance), color = "red", size = 3) +
+  geom_hline(yintercept = (1/length(eigenvalues))*100, linetype = "dashed", color = "darkgray") +
+  geom_text(aes(label = round(Variance, 1)), vjust = -1.5, size = 3.5) +
+  labs(title = "Scree Plot",
+       subtitle = "Elbow method",
+       x = "Components",
+       y = "Explained variance") +
+  theme_minimal()
+
+# The screeplot shows a sharp cut between first and second component, suggesting that
+# We can try both 1 & 3 components
+
+pca_model <- principal(r = mixed_cormat$rho,
+                       nfactors = 1,
+                       rotate = "varimax")
+
+pca_model$loadings
+pca_model$uniquenesses
+
+pca_model2 <- principal(r = mixed_cormat$rho,
+                        nfactors = 2,
+                        rotate = "varimax")
+
+pca_model2$loadings
+pca_model2$uniquenesses
+pca_model2$weights
+
+
+# Perform FA with 2 dimension 
+fa <- fa(r = mixed_cormat$rho,
+         nfactors = 2,
+         rotate = "varimax")
+
+# Summarize fa and extract loadings & scores
+summary(fa)
+fa$loadings
+fa$uniquenesses
+fa$weights
+
+# We now discovered 2 indexes: institutional distrust (MR1) & Stealth democracy attitudes (MR2)
+# Stealth democracy: want the system to work well but don't want the politics to 
+# lead it
+
+# I WON'T INCLUDE STEALTH DEMOCRACY IN MY COMPUTATION
+
+#Create the new weighted indexes & scale it 0-10
+
+trust_data <- trust_data %>%
+  mutate(Institutional_distrust = Q04b*-0.002 + Q05b*-0.036 + Q07a*0.501 + 
+           Q05c*-0.006 + Q07b*0.331 + Q07e*0.211)
+
+#we determine a function to rescale -5 +5
+
+rescale <- function(x) {
+  x_numeric <- as.numeric(x) #force x to be numeric
+  
+  x_min <- min(x_numeric, na.rm = TRUE)
+  x_max <- max(x_numeric, na.rm = TRUE)
+  
+  (((x_numeric - x_min) * 10) / (x_max - x_min))
+}
+
+trust_rescaled <- trust_data %>%
+  mutate(Institutional_distrust = rescale(Institutional_distrust),
+  )%>%
+  select(seriale, Institutional_distrust)
+
+
+#FINAL DF ----
+
+populist_df <- ITANES_2022_Post_electoral%>%
+  select(seriale, eta_classe, Q10LHa, Q10LHb,eta)%>%
+  mutate(seriale = as.numeric(zap_labels(seriale)),
+         abstention = as.numeric(zap_labels(Q10LHa)))%>%
+  filter(abstention < 3)%>%
+  mutate(abstention = ifelse(abstention == 2, 1, 0),
+         abstention = as.factor(abstention))%>%
+  mutate(populist_vote = as.factor(Q10LHb %in% c("2","5")))%>%  # FIX: factor (non logical) - serve a glm/plot_model/ggeffects
+  mutate(eta_classe = fct_collapse( #merging classes 1 & 2
+    factor(eta_classe),
+    "18-34" = c("1", "2"),  
+    "35-44"   = "3",
+    "45-54"   = "4",
+    "55-64"   = "5",
+    ">64"   = "6"
+  ))%>%
+  mutate(age_class = eta_classe)%>%
+  select(seriale, age_class, populist_vote, eta, abstention)
+
+
+pop_age <- left_join(trust_rescaled, populist_df, by = join_by(seriale))
+
+table(pop_age$age_class)     
+
+
+#Addittive models-----
+
+pop_age$populist_vote <- as.factor(pop_age$populist_vote)
+
+Complete_pooling <- glm(populist_vote ~ Institutional_distrust,
+                        family = binomial(link = "logit"),
+                        data = pop_age)
+
+stargazer(Complete_pooling, type = "text")
+
+plot_model(Complete_pooling, 
+           type = "pred", 
+           terms = c("Institutional_distrust"),
+) +
+  theme_minimal()
+
+#Try it on vote/non vote
+
+CP_abstention <- glm(abstention ~ Institutional_distrust,
+                     family = binomial(link = "logit"),
+                     data = pop_age)
+
+stargazer(CP_abstention, type = "text")
+
+plot_model(CP_abstention, 
+           type = "pred", 
+           terms = "Institutional_distrust",
+) +
+  theme_minimal()
+
+# GAM - Check the shape of the distribution ----
+
+# A gam is a model that guarantee a high flexibility & calculate non linear regression models
+# we want to use it to study the shape of the relation
+
+library(mgcv)
+
+mod_gam <- gam(populist_vote
+               ~ s(Institutional_distrust)
+               + age_class,
+               family = binomial, data = pop_age)
+
+plot(mod_gam, pages = 1, shade = TRUE)
+
+summary(mod_gam)
+
+# It seems like at a certain point the populist vote decrease for institutional distrust
+# This can suggest that after a certain ceiling non voting become the choice: this could
+# be the reason for our non working models. We can try a model that take institutional
+# distrust till 7/8 and check the significativity of the relation and we can do the same
+# for non vote. Moreover we can impute a GAM for abstention
+
+
+mod_gam <- gam(abstention
+               ~ s(Institutional_distrust)
+               + age_class,
+               family = binomial, data = pop_age)
+
+plot(mod_gam, pages = 1, shade = TRUE)
+
+# Our HP was right abstention explode for really high levels of distrust 
+# Now we can try our CDT (critical distrust threshold) model with level lower than 8
+
+# Before starting with our plan we want to check how many high distrust individuals we have
+table(pop_age$Institutional_distrust >= 8)
+
+# 987 is really significant, this means that they have a strong impact on our regression models
+
+# CDT simple model ----
+
+CDT_df <- pop_age%>%
+  filter(Institutional_distrust <= 8)
+
+CDT <- glm(populist_vote ~ Institutional_distrust,
+                        family = binomial(link = "logit"),
+                        data = CDT_df)
+
+stargazer(CDT, type = "text")
+
+plot_model(CDT, 
+           type = "pred", 
+           terms = "Institutional_distrust [all]",
+           
+) +
+  theme_minimal()
+
+# INTERACTION MODEL ----
+
+# Clean the dataset to perform interaction model and avoid confusing sjPlot
+
+pop_age_clean <- pop_age %>%
+  filter(Institutional_distrust > 0)%>%
+  drop_na() %>%
+  mutate(
+    age_class   = as.factor(age_class)
+  )
+
+# INSTITUIONAL DISTRUST X AGE CLASS
+
+# I have to decide a reference class. For my purpose the main strategy would be to choose 
+# 18-34 to see its behaviour confronted with the others 
+
+table(pop_age_clean$age_class)  
+
+#18-34 35-44 45-54 55-64   >64 
+#756   701   909   852    1269 
+
+# A solution could be to merge 1 & 2
+
+pop_age_clean$age_class <- relevel(factor(pop_age_clean$age_class), ref = "18-34")
+
+distrust_x_class <- glm(populist_vote
+                        ~ Institutional_distrust
+                        * age_class,
+                        family = binomial(link = "logit"),
+                        data = pop_age_clean)
+
+stargazer(distrust_x_class, type = "text")
+
+sjPlot::plot_model(distrust_x_class, 
+                   type = "int",
+                   show.legend = TRUE
+) +
+  theme_bw()
+
+distrust_x_class_abs <- glm(abstention
+                            ~ Institutional_distrust
+                            * age_class,
+                            family = binomial(link = "logit"),
+                            data = pop_age_clean)
+
+stargazer(distrust_x_class_abs, type = "text")
+
+sjPlot::plot_model(distrust_x_class_abs, 
+                   type = "int",
+                   show.legend = TRUE
+) +
+  theme_bw()
+
+
+# CDT Model -----
+
+# CDT addictive
+
+CDT <- glm(populist_vote
+             ~ Institutional_distrust,
+             family = binomial(link = "logit"),
+             data = CDT_df)
+
+stargazer(CDT, type = "text")
+
+plot_model(CDT,
+           type = "pred",
+           terms = "Institutional_distrust",
+           show.legend = TRUE) + 
+  theme_minimal()
+
+# CDT Interaction 
+
+CDT_df$age_class <- relevel(factor(CDT_df$age_class), ref = "18-34")
+
+CDT_distrust_int <- glm(populist_vote
+                          ~ Institutional_distrust
+                          * age_class,
+                          family = binomial(link = "logit"),
+                          data = CDT_df)
+
+stargazer(CDT_distrust_int, type = "text")
+
+plot_model(CDT_distrust_int, 
+           type = "int",
+           ci.lvl = NA,
+           show.legend = TRUE,
+) +
+  theme_bw()
+
+table(pop_age_clean$age_class)     
+
+
+# Control by FDI
+# Control by macro-regions / instruction 
+# Control by M5S/League
+
+#Macro regions controlling ----
+
+# North - South - Red zone (included: Toscana, Emilia-Romagna, Umbria, Marche)
+
+Regions_df <- ITANES_2022_Post_electoral%>%
+  mutate(Macro_region = case_when(
+    regione < 7 ~ "North",
+    regione < 12 ~ "Red_area",
+    TRUE ~ "South"))%>%
+  select(seriale, Macro_region)
+
+Regions_df <- left_join(pop_age_clean, Regions_df, by = join_by(seriale))%>%
+  mutate(Macro_region = factor(Macro_region))
+
+# Selection of the reference class
+
+Regions_df$age_class <- relevel(factor(Regions_df$age_class), ref = "18-34")
+
+#Pure addittive model of populist vote with control
+
+Regions_model_add <- glm(populist_vote
+                         ~ Macro_region + Institutional_distrust
+                         + age_class,
+                         family = binomial(link = "logit"),
+                         data = Regions_df)
+
+stargazer(Regions_model_add, type = "text")
+
+plot_model(Regions_model_add, 
+           type = "pred", 
+           terms = c("Institutional_distrust", "age_class"),
+) +
+  theme_minimal()
+
+# Pure addittive model of abstention with control
+
+
+Regions_model_add_abs <- glm(abstention
+                             ~ Macro_region + Institutional_distrust
+                             + age_class,
+                             family = binomial(link = "logit"),
+                             data = Regions_df)
+
+stargazer(Regions_model_add_abs, type = "text")
+
+plot_model(Regions_model_add_abs, 
+           type = "pred", 
+           terms = c("Institutional_distrust", "age_class"),
+) +
+  theme_minimal()
+
+
+# Interaction model of populist vote with control
+
+Regions_model_int <- glm(populist_vote
+                         ~ Macro_region + Institutional_distrust
+                         * age_class,
+                         family = binomial(link = "logit"),
+                         data = Regions_df)
+
+stargazer(Regions_model_int, type = "text")
+
+plot_model(Regions_model_int, 
+           type = "pred", 
+           terms = c("Institutional_distrust", "age_class"),
+           ci.lvl = NA
+) +
+  theme_minimal()
+
+# Interaction model of abstention with control 
+
+Regions_model_int_abs <- glm(abstention
+                             ~ Macro_region + Institutional_distrust
+                             * age_class,
+                             family = binomial(link = "logit"),
+                             data = Regions_df)
+
+stargazer(Regions_model_int_abs, type = "text")
+
+plot_model(Regions_model_int_abs, 
+           type = "pred", 
+           terms = c("Institutional_distrust", "age_class"),
+) +
+  theme_minimal()
+
+
+# Models review (No Complete pooling)
+
+library(modelsummary)
+# library(pandoc)  # FIX: rimosso - non serve per l'export .docx di modelsummary, e spesso non e installato
+
+
+Populist_vote <- modelsummary(
+  list(
+    "Interaction model" = distrust_x_class,
+    "High distrust excluded (additive)" = CDT,
+    "High distrust excluded (Interaction)" = CDT_distrust_int,
+    "Region controlling (Additive)" = Regions_model_add,
+    "Region controlling (Interaction)" = Regions_model_int
+  ),
+  output = "Populist_regression.docx",
+  stars = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo",
+)
+
+
+abstention <- modelsummary(
+  list(
+    "Interaction model" = distrust_x_class_abs,
+    "Region controlling (Additive)" = Regions_model_add_abs,
+    "Region controlling (Interaction)" = Regions_model_int_abs
+  ),
+  output = "abstention_regression.docx",
+  stars = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo"
+)
+```
+
+## Research question and hypothesis
+
+#### *Italian populist parties rise and fall*
+
+In the 2018 Italian political elections 5 star movement and League for Salvini premier were the biggest winners obtaining respectively 32% and 17% of the votes; these two can be considered the main populist Italian parties . The dissatisfaction toward political parties and their system was one of the main driver for their rise [@chiaramonte2018] .
+
+4 years later these 2 parties fell: 5 star movement obtained about 15,43% but the worst fall was the League one, collapsing to 8.8%.
+
+#### *Younger generations and democracy*
+
+Lots of studies in recent years showed a growing disaffection and distrust of younger generations toward democracy and its institutions and parties [e.g. @kwak2020]. This phenomenon frequently lead to two different attitudes that influence their behavior when they are called to the polls: democratic apathy and democratic antipathy; the former leading to abstention, the latter to vote for anti-system/populist parties [@foa2019].
+
+#### *Research questions and hypothesis*
+
+The purpose of the present study is to check the grade with which these two parties are still able to answer the distrustful and protesting political supply and whether it changes for age cohorts in the 2022 Italian general elections.
+
+The main research question will be the following:
+
+-   *How much the distrust toward political and party system translates in voting for populist parties? How does It changes for different cohorts?*
+
+It will be articulated in 2 main hypothesis:
+
+**H1**: Higher level of distrust toward Parliament and political parties will tend to significantly increase the share of votes for populist parties.
+
+**H2**: The positive effect of institutional distrust on populist voting will be weaker among younger cohorts (18-34), who are more likely to convert distrust into abstention rather than partisan choice.
+
+## Data and variable operationalization <!--  150 words -->
+
+#### *Data source*
+
+To operationalize distrust and its relation with voting behavior the ITANES post-electoral data from 2022 elections [@vezzoni2023] has been employed; it provides individual level observations for 4696 individuals.
+
+#### *Selected variables and operationalization*
+
+```{r}
+#| include: FALSE
+#| label: Trust variables
+
+
+```
+
+*Institutional distrust*: To operationalize this dimension an index was built. To do so factor analysis and principal component analysis were performed on 5 selected items. The analyses highlighted 2 main dimensions[^1]: institutional distrust and stealth democracy[^2], both theoretically correlated with populism. Nevertheless only the first dimension was employed for the present study as it was better defined and, theoretically, a predictor for both populism and abstention.
+
+[^1]: The principal component analysis presented 3 components with eigenvalue \>1, the Kaiser method would require to take every observation that satisfy this characteristic; despite that the explained variance collpased and flattened between dimension 2 and 3. For this reasons only 2 dimensions were kept as valid. (Explained variance: Institutional distrust = 38.6, Stealth democracy = 23.5, 3rd dimension = 13.5, fourth dimension = 12.9)
+
+[^2]: Stealth democracy is the dimension of distrust toward politics that would prefer non-politic actors/more authoritarian leaders to have more decisional power, it pertains the sphere of dissatisfaction toward democracy as a whole.
+
+Institutional distrust is composed by three items: trust toward parliament, government and parties. This three items had range 1-4 were 1 meant a lot of trust. I then constructed a weighted index and rescaled it 0-10 for interpretability.
+
+```{r}
+#| include: false
+#| label: Indexes creation
+#| cache: true
+
+# Create a var vector for convenience
+
+cat_var <- c("Q04b", "Q05b", "Q05c", "Q07a", "Q07b","Q07e") 
+
+# With mixcor we impute a mixed correlation matrix
+
+mixed_cormat <- mixedCor(data = trust_data,
+                         c = cat_var,
+                         smooth = TRUE)
+
+# Plot the correlation 
+
+corrplot(mixed_cormat$rho, method = "number",
+         type = "lower", order = "hclust",
+         tl.col = "black", tl.srt = 45)
+
+# Since there are a lot of strong correlation use pca to determine how many 
+# dimension to use 
+
+eigenvalues <- eigen(mixed_cormat$rho)$values
+
+explained_variance <- (eigenvalues / sum(eigenvalues)) * 100
+
+df_screeplot <- data.frame(
+  Component = 1:length(eigenvalues),
+  Eigenvalues = eigenvalues,
+  Variance = explained_variance
+)
+
+print(df_screeplot)
+
+# We have 3 component with >1 eigenvalue, so for the Kaiser method (keeping PCs)
+# with EV > 1 we would take 3 of them. Anyway, we can also use a screeplot to visualize it
+
+ggplot(df_screeplot, aes(x = as.factor(Component), y = Variance)) +
+  geom_bar(stat = "identity", fill = "steelblue", width = 0.6) +
+  geom_line(aes(x = Component, y = Variance), color = "black", linewidth = 0.8) +
+  geom_point(aes(x = Component, y = Variance), color = "red", size = 3) +
+  geom_hline(yintercept = (1/length(eigenvalues))*100, linetype = "dashed", color = "darkgray") +
+  geom_text(aes(label = round(Variance, 1)), vjust = -1.5, size = 3.5) +
+  labs(title = "Scree Plot",
+       subtitle = "Elbow method",
+       x = "Components",
+       y = "Explained variance") +
+  theme_minimal()
+
+# The screeplot shows a sharp cut between first and second component, suggesting that
+# We can try both 1 & 3 components
+
+pca_model <- principal(r = mixed_cormat$rho,
+                       nfactors = 1,
+                       rotate = "varimax")
+
+pca_model$loadings
+pca_model$uniquenesses
+
+pca_model2 <- principal(r = mixed_cormat$rho,
+                        nfactors = 2,
+                        rotate = "varimax")
+
+pca_model2$loadings
+pca_model2$uniquenesses
+pca_model2$weights
+
+
+# Perform FA with 2 dimension 
+fa <- fa(r = mixed_cormat$rho,
+         nfactors = 2,
+         rotate = "varimax")
+
+# Summarize fa and extract loadings & scores
+summary(fa)
+fa$loadings
+fa$uniquenesses
+fa$weights
+
+# We now discovered 2 indexes: institutional distrust (MR1) & Stealth democracy attitudes (MR2)
+# Stealth democracy: want the system to work well but don't want the politics to 
+# lead it
+
+# I WON'T INCLUDE STEALTH DEMOCRACY IN MY COMPUTATION
+
+#Create the new weighted indexes & scale it 0-10
+
+trust_data <- trust_data %>%
+  mutate(Institutional_distrust = Q04b*-0.002 + Q05b*-0.036 + Q07a*0.501 + 
+           Q05c*-0.006 + Q07b*0.331 + Q07e*0.211)
+
+#we determine a function to rescale -5 +5
+
+rescale <- function(x) {
+  x_numeric <- as.numeric(x) #force x to be numeric
+  
+  x_min <- min(x_numeric, na.rm = TRUE)
+  x_max <- max(x_numeric, na.rm = TRUE)
+  
+  (((x_numeric - x_min) * 10) / (x_max - x_min))
+}
+
+trust_rescaled <- trust_data %>%
+  mutate(Institutional_distrust = rescale(Institutional_distrust),
+  )%>%
+  select(seriale, Institutional_distrust)
+```
+
+*Populist vote*: votes for 5SM and League were coded as populist and other as non populist. The selection of this two come from CHES & POPPA [@rovny2025; @zaslove2024] scores, two of the main expert surveys about political parties[^3] .
+
+[^3]: In both surveys Brothers of Italy was the third in populist score; its inclusion could be more complete but also a source of noise as with 26% of the preferences Giorgia Meloni's party attracted a very wide sector of the electorate not only the disillusioned.
+
+*Abstention*: for abstention the voted/non voted variable from ITANES was employed
+
+*Age class*: the survey presented a 6 class age classification which were recoded to 5 for 2 reasons:
+
+1.  The main hypothesis is about younger generations which include also 25-34. The study main model will be a logistic model, which require a reference category; having them both as reference category will help to compare them directly with other cohorts;
+2.  19-24 and 24-35 are the two less numerous categories, specially the lower one which presented less than a half observation respect to the others. Merging them was useful to have stronger predictive power.
+
+```{r}
+#| include: false
+#| label: final df creation
+
+#FINAL DF
+
+populist_df <- ITANES_2022_Post_electoral%>%
+  select(seriale, eta_classe, Q10LHa, Q10LHb,eta)%>%
+  mutate(seriale = as.numeric(zap_labels(seriale)),
+         abstention = as.numeric(zap_labels(Q10LHa)))%>%
+  filter(abstention < 3)%>%
+  mutate(abstention = ifelse(abstention == 2, 1, 0),
+         abstention = as.factor(abstention))%>%
+  mutate(populist_vote = as.factor(Q10LHb %in% c("2","5")))%>%  # FIX: factor (non logical) - serve a glm/plot_model/ggeffects
+  mutate(eta_classe = fct_collapse( #merging classes 1 & 2
+    factor(eta_classe),
+    "18-34" = c("1", "2"),  
+    "35-44"   = "3",
+    "45-54"   = "4",
+    "55-64"   = "5",
+    ">64"   = "6"
+  ))%>%
+  mutate(age_class = eta_classe)%>%
+  select(seriale, age_class, populist_vote, eta, abstention)
+
+
+pop_age <- left_join(trust_rescaled, populist_df, by = join_by(seriale))
+
+```
+
+*Macro Region*: for electoral behavior geographical positioning is always a strong predictor in Italy, observations were divided them in the 3 classical macro regions: north, south and red zone (Toscana, Emilia-Romagna, Marche, Umbria).
+
+```{r}
+#| include: false
+#| label: regions-coding
+#| cache: true
+
+Regions_df <- ITANES_2022_Post_electoral%>%
+  mutate(Macro_region = case_when(
+    regione < 7 ~ "North",
+    regione < 12 ~ "Red_area",
+    TRUE ~ "South"))%>%
+  select(seriale, Macro_region)
+
+Regions_df_CDT <- left_join(pop_age_clean, Regions_df, by = join_by(seriale))%>%
+  mutate(Macro_region = factor(Macro_region))%>%
+  filter(Institutional_distrust<8)
+
+Regions_df_full <- left_join(pop_age_clean, Regions_df, by = join_by(seriale))%>%
+  mutate(Macro_region = factor(Macro_region))
+```
+
+More information about employed items and their item-code are available in [appendix B](#sec-appendixB).
+
+## Model choice and statistical justification <!-- 300 words -->
+
+#### *Main model*
+
+To test H1 a logistic regression model has been employed for both populist vote and abstention. This kind of regression is appropriate as it models the outcome as a probability within the \[0,1\] range and both the dependent variables are binary. Main independent variable was institutional distrust.
+
+The initial univariate analysis has been performed and it led to a small effect, suggesting potential misspecification of the model, particularly the violation of the linearity assumption in the logit.
+
+Since the logistic regression failed to produce strong significative results a Generalized addittive model (GAM) was employed as a diagnostic tool to check if the fitting problem was due to data distribution; it was ideal because it doesn't assume linearity and adapt to the shape of the data and reveal potential non linear patterns. This showed a non-monotonic relationship between distrust and populist voting with a collapse in populist voting for high levels of distrust, and, on the contrary, abstention displays a consistently positive relationship.
+
+Based on this evidence a restricted specification, labelled Critical Distrust Threshold (CDT), was introduced. It restricted the sample respondents below the threshold of 8. A better fitting on this data would confirm that distrust works as a positive predictor till medium-high levels of distrust.
+
+#### *Interaction and Additive model*
+
+To test H2 age class was added and incorporated in both additive and interaction models. The aim of the first one was to study the effect of age class isolated; the second to check whether distrust interacted with age class, trying to have a better comprehension of how distrust translates to electoral behavior for each age class. The selected reference category has been 18-34, as it was the main focus of the study: this choice permitted to compare it to all the other classes.
+
+Lastly a control for Macro Region was included, to account for persistent territorial differences in voting behavior.
+
+## Results <!-- 500 words -->
+
+```{r}
+#| label: pop-age-clean-df
+#| include: false
+
+
+# INTERACTION MODEL ----
+
+# Clean the dataset to perform interaction model and avoid confusing sjPlot
+
+pop_age_clean <- pop_age %>%
+  filter(Institutional_distrust > 0)%>%
+  drop_na() %>%
+  mutate(
+    age_class = as.factor(age_class),
+    populist_vote = as.factor(populist_vote)
+  )
+
+# I have to decide a reference class. For my purpose the main strategy would be to choose 
+# 18-34 to see its behaviour confronted with the others 
+
+table(pop_age_clean$age_class)  
+
+#18-34 35-44 45-54 55-64   >64 
+#756   701   909   852    1269 
+
+# A solution could be to merge 1 & 2
+
+pop_age_clean <- pop_age_clean %>%
+  mutate(
+    age_class = relevel(factor(age_class), ref = "18-34"),
+    populist_vote = as.factor(populist_vote)
+  )
+```
+
+#### *Institutional distrust on populist vote and abstention*
+
+The first univariate model aimed to capture the effect of distrust on populism and abstention. Both resulted significant but the coefficient for abstention was substantially larger. The coefficients for logistic regression are presented in log-odds, a 1 point increase in distrust would increase the log-odds of voting populist of 0.05, though this is a scale that lacks intuitive interpretability. A common approximation is to use the "divide by 4 rule" dividing the parameter by 4 to have the slope of the curve in its steepest part around 0.5 probability, however, since the predicted probabilities lies below that threshold the marginal effect would be overestimated.
+
+```{r}
+#| echo: false
+#| label: tbl-plain-merged
+#| tbl-cap: "Results for logistic regression of institutional distrust on populist vote and abstension"
+
+Complete_pooling <- glm(populist_vote ~ Institutional_distrust,
+                        family = binomial(link = "logit"),
+                        data = pop_age)
+
+CP_abstention <- glm(abstention ~ Institutional_distrust,
+                     family = binomial(link = "logit"),
+                     data = pop_age)
+
+modelsummary(list(
+  "Populist vote model" = Complete_pooling,
+  "Abstension model" = CP_abstention
+),
+  stars = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo"
+)
+```
+
+To interpet these coefficients two operations were performed: (1) exponentiating the logistic coefficient to obtain an odds ratio; (2) computing the derivative at the average value of institutional distrust in ITANES data to evaluate the predictive difference.
+
+```{r}
+#| label: Coefficients interpretation
+#| include: false
+
+
+library(boot)
+
+# Populism
+
+exp(0.053) # Result 1.05: for an increase of 1 in distrust odds of voting populist
+           # increase of 5.1%
+
+# Mean value of distrust is 6.2
+# logit-1 to compute probability at the mean point
+inv.logit(-1.822 + 0.053 * 6.2) #Result = 18.3%; probs at the mean point
+
+#Derivative for % variation of 1 at the mean point (beta * P * (1-p))
+0.053 * 0.183 * (1 - 0.183) # 0.8%: an increase of 1 point in distrust at 6.2 leads to and increase 0f 0.8% of voting populist
+
+# Abstention
+
+exp(0.209) # Result 1.23: for an increase of 1 in distrust odds of abstaining
+           # increase of 20.9%
+
+# Mean value of distrust is 6.2
+# logit-1 to compute probability at the mean point
+inv.logit(-3.04 + 0.209 * 6.2) #Result = 14.9%; probs at the mean point
+
+#Derivative for % variation of 1 at the mean point (beta * P * (1-p))
+0.209 * 0.149 * (1 - 0.149) # 2.7% : an increase of 1 point in distrust at 6.2 leads to and increase 0f 2.7% of voting populist
+
+```
+
+-   Populist vote: the exponentiation lead to an odds ratio of 1.05, this indicate that a unit increase in institutional distrust increases the odds of voting populist of 5.1%. Moreover at the mean distrust level (6.2) the probability of voting populist is 18.3% with a marginal effect at the mean of 0.008. From the graphical representation below it can be appreciated the approximately constant marginal effect of distrust on populist vote.
+
+```{r}
+#| label: fig-pop1
+#| fig-cap: "logistic regression of populist vote on distrust level"
+#| echo: false
+#| warning: false
+
+plot_model(Complete_pooling, 
+           type = "pred", 
+           terms = c("Institutional_distrust"),
+) +
+  theme_minimal()
+```
+
+-   Abstention: as can be appreciated immediately from the graph comparison the effect of distrust on abstention is way stronger, starting from below 5% for distrust = 0, but with increasing marginal effects. The slope at the mean distrust level is 0.026, meaning that a 1 point increment at 6.2 would increment the probability of abstaining 2.6%
+
+```{r}
+#| label: fig-abs1
+#| fig-cap: "Logistic regression of abstention on institutional distrust"
+#| echo: false
+#| warning: false
+
+plot_model(CP_abstention, 
+           type = "pred", 
+           terms = "Institutional_distrust",
+) +
+  theme_minimal()
+
+
+```
+
+#### ***CDT model***
+
+The results of the prior analysis highlighted a weak coefficient and lower significativeness for populism. To better understand the reason a general addictive model was performed as an explorative model; this has the advantage of not assessing a linear shape and fits the best possible value of y for each value of x.
+
+::: {layout-ncol="2"}
+```{r}
+#| label: fig-GAM_populist-vote
+#| echo: false
+#| fig-cap: "GAM model for Populist vote"
+#| warning: false
+#| fig-width: 4
+mod_gam_pop <- gam(populist_vote
+               ~ s(Institutional_distrust)
+               + age_class,
+               family = binomial, data = pop_age_clean)
+
+plot(mod_gam_pop, select = 1, shade = TRUE)
+abline(h = 0, col = "red", lty = 2, lwd = 1.5)
+
+
+# It seems like at a certain point the populist vote decrease for institutional distrust
+# This can suggest that after a certain ceiling non voting become the choice: this could
+# be the reason for our non working models. We can try a model that take institutional
+# distrust till 7/8 and check the significativity of the relation and we can do the same
+# for non vote. Moreover we can compute a GAM for abstention
+```
+
+```{r}
+#| label: fig-GAM_abs
+#| echo: false
+#| fig-cap: "GAM model for abstension"
+#| warning: false
+#| fig-width: 4
+
+mod_gam_abs <- gam(abstention
+               ~ s(Institutional_distrust)
+               + age_class,
+               family = binomial, data = pop_age)
+
+plot(mod_gam_abs, select = 1, shade = TRUE)
+abline(h = 0, col = "red", lty = 2, lwd = 1.5)
+```
+:::
+
+The populist GAM model clearly presents a point in which the relationship between populist vote and distrust reverse its direction in a critical threshold, while the same effect doesn't happen for abstention. GAM centers values around the mean, the values on the y axis are in log-odds. Observation below the 0 have therefore minor probabilities of voting populist/abstaining than the average level of the sample. The lines on the graph floor represent the distribution of the observations.
+
+To check whether the logistic model is well performing till that threshold a new model with observation which presented a level of distrust lower then eight (the critical threshold) was computed and labelled as Critical Distrust Threshold (CDT) model. The changes in the data were substantial as 987 observation presented a high level (\>8) of distrust.
+
+```{r}
+#| label: tbl-cdt
+#| echo: false
+#| tbl-cap: "Logistic regression on observations <8"
+
+
+CDT_df <- pop_age_clean%>%
+  filter(Institutional_distrust <= 8)
+
+CDT <- glm(populist_vote
+             ~ Institutional_distrust,
+             family = binomial(link = "logit"),
+             data = CDT_df)
+
+modelsummary(
+  CDT,
+  stars = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo"
+)
+```
+
+CDT model showed stronger results in significativity and intensity of the effect. P-value, the main measure for significativity, decreased below 0.001, and log-odds were more than doubled. This is reflected across all interpretative metrics: odd ratio increases from 1.05 to 1.14, the probability of voting populist at the sample mean goes from 18.3 to 19.6. Most importantly the marginal effect at the mean increases of 0.013, that means that an increase of 1 point in distrust at that level raises the probability of voting populist by 2.1 percentage points (against the previous 0.8%). These stronger estimates are more consistent with the GAM findings: including high distrust voters in the full model attenuates the positive association observed at lower distrust levels.
+
+```{r}
+#| label: coef-extraction-cdt
+#| include: false
+
+logistic_effects(0.135, -2.251, 6.2)
+
+```
+
+```{r}
+#| label: fig-cdt
+#| echo: false
+#| fig-cap: "CDT logistic regression model"
+
+plot_model(CDT, 
+           type = "pred", 
+           terms = "Institutional_distrust",
+) +
+  theme_minimal()
+
+```
+
+#### Age model: additive and interaction
+
+Age classes were then added to the model both through additive and interactions models. The different specifications aim is to compute: (1) for additive model the specific mere effect of age class on populist voting and abstention, (2) for interaction models how each age class act as a moderator for the effect that institutional distrust has on the two dependent variables. The selected reference class was 18-34.
+
+```{r}
+#| label: Models specification
+#| include: false
+
+# Addittive
+
+class_pop_add <- glm(populist_vote
+                        ~ Institutional_distrust
+                        + age_class,
+                        family = binomial(link = "logit"),
+                        data = pop_age_clean)
+
+class_abs_add <- glm(abstention
+                            ~ Institutional_distrust
+                            + age_class,
+                            family = binomial(link = "logit"),
+                            data = pop_age_clean)
+
+
+# Interaction
+
+class_pop_int <- glm(populist_vote
+                        ~ Institutional_distrust
+                        * age_class,
+                        family = binomial(link = "logit"),
+                        data = pop_age_clean)
+
+class_abs_int <- glm(abstention
+                            ~ Institutional_distrust
+                            * age_class,
+                            family = binomial(link = "logit"),
+                            data = pop_age_clean)
+
+
+# CDT Models
+
+CDT_add_pop <- glm(populist_vote
+             ~ Institutional_distrust + age_class,
+             family = binomial(link = "logit"),
+             data = CDT_df)
+
+CDT_int_pop <- glm(populist_vote
+                          ~ Institutional_distrust
+                          * age_class,
+                          family = binomial(link = "logit"),
+                          data = CDT_df)
+
+```
+
+```{r}
+#| label: tbl-populist
+#| tbl-cap: "Institutional distrust and the populist vote: additive and interaction models"
+#| echo: false
+
+# Label map [NAMES MAPPING AND REORDERING IS AI GENERATED]
+coef_labels <- c(
+  "Institutional_distrust"                = "Institutional distrust",
+  "age_class35-44"                        = "Age 35-44",
+  "age_class45-54"                        = "Age 45-54",
+  "age_class55-64"                        = "Age 55-64",
+  "age_class>64"                          = "Age >64",
+  "Institutional_distrust:age_class35-44" = "Distrust × Age 35-44",
+  "Institutional_distrust:age_class45-54" = "Distrust × Age 45-54",
+  "Institutional_distrust:age_class55-64" = "Distrust × Age 55-64",
+  "Institutional_distrust:age_class>64"   =       "Distrust × Age >64",
+  "Macro_regionNorth"    = "North",
+  "Macro_regionRed_area" = "Red area",
+  "Macro_regionSouth"    = "South",
+  
+  "(Intercept)"                           = "Constant"
+)
+
+modelsummary(
+  list(
+    "Additive"        = class_pop_add,
+    "Interaction"     = class_pop_int,
+    "CDT additive"    = CDT_add_pop,
+    "CDT interaction" = CDT_int_pop
+  ),
+  coef_map = coef_labels,
+  stars    = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo",
+  notes    = list(
+    "Logistic regression; coefficients in log-odds, standard errors in parentheses.",
+    "Age reference category: 18-34. CDT = sample restricted to institutional distrust of 8 or below."
+  )
+)
+```
+
+The regression table yields few significant results overall. Institutional distrust, however, remains a significant predictor across all tspecifications,and most strongly in the CDT models, in line with previous discover. Nevertheless it is worth noting some exceptions:
+
+-   **Age 35-44**: there is significancy for additive model, indicating that there is a somewhat higher populist tendency, but the relation between distrust and populist vote remain quite stable.
+
+-   **Age 45-54**: this cohort present the most interesting pattern: coefficients get significant once the interaction term is introduced in the computation and it has an opposite sign in the two occurrences. The most plausible explaination for this result is an higher general tendency of this age class to vote for populist parties that, on the contrary, has less to do with distrust compared to the reference class. The CDT interaction plot below illustrates this. Interaction was crucial to capture this tendency, as without it the two effects nullified each other.
+
+-   **Age 55+**: Neither cohort reaches significance in any specification.
+
+```{r}
+#| label: fig-cdt-interaction 
+#| fig-cap: "Plotting of CDT interaction model"
+#| echo: false
+
+plot_model(CDT_int_pop, 
+           type = "int",
+           show.legend = TRUE,
+) +
+  theme_bw()
+```
+
+The interaction plot confirms the pattern: there is a different behavior of class 45-54, that even present a slightly negative relationship between institutional distrust and populist vote. It is also worth noting that younger generations and 64+ present a really similar attitude toward populist parties, more of that are discussed in the interpretation section.
+
+```{r}
+#| label: tbl-abstention
+#| tbl-cap: "Institutional distrust and abstention: additive and interaction models"
+#| echo: false
+
+
+modelsummary(
+  list(
+    "Additive"    = Regions_model_add,
+    "Interaction" = Regions_model_int
+  ),
+  coef_map = coef_labels,
+  stars    = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo",
+  notes    = list(
+    "Logistic regression; coefficients in log-odds, standard errors in parentheses.",
+    "Age reference category: 18-34."
+  )
+)
+```
+
+The models yield some interesting results, with a general pattern that emerges far more sharply in the interaction specifications. The negative coefficient observed in the additive models turns positive once the interaction is introduced: this indicates that the greater tendency of the young to abstain is a general, baseline disposition — one that is less sensitive to distrust — whereas for the other cohorts the effect of distrust is significantly more positive. The only comparable case is that of the over-64 cohort, for whom abstention does not appear to be a function of distrust; this point, too, is developed further in the interpretation section.
+
+The plot reveals these tendencies as the lower cohort curve is the flattest one while the others follows similar paths, despite the 65+ cohort that also assumes a flatter shape.
+
+```{r}
+#| label: fig-abs-interaction 
+#| fig-cap: "Plotting of abstension interaction model"
+#| echo: false
+
+plot_model(class_abs_int, 
+           type = "int",
+           show.legend = TRUE,
+) +
+  theme_bw()
+```
+
+#### Region controlling
+
+Lastly to assess the robustness of the findings a control for region was performed.
+
+```{r}
+#| label: Control Models specification
+#| include: false
+
+Regions_model_add <- glm(populist_vote
+                         ~ Macro_region + Institutional_distrust
+                         + age_class,
+                         family = binomial(link = "logit"),
+                         data = Regions_df_full)
+
+Regions_model_add_CDT <- glm(populist_vote
+                         ~ Macro_region + Institutional_distrust
+                         + age_class,
+                         family = binomial(link = "logit"),
+                         data = Regions_df_CDT)
+
+
+# Pure addittive model of abstention with control
+
+
+Regions_model_add_abs <- glm(abstention
+                             ~ Macro_region + Institutional_distrust
+                             + age_class,
+                             family = binomial(link = "logit"),
+                             data = Regions_df_full)
+
+
+Regions_model_int_abs <- glm(abstention
+                             ~ Macro_region + Institutional_distrust
+                             * age_class,
+                             family = binomial(link = "logit"),
+                             data = Regions_df_full)
+
+
+# Interaction model of populist vote with control
+
+Regions_model_int <- glm(populist_vote
+                         ~ Macro_region + Institutional_distrust
+                         * age_class,
+                         family = binomial(link = "logit"),
+                         data = Regions_df_full)
+
+
+# Interaction model of abstention with control 
+
+Regions_model_int_CDT <- glm(abstention
+                             ~ Macro_region + Institutional_distrust
+                             * age_class,
+                             family = binomial(link = "logit"),
+                             data = Regions_df_CDT)
+
+```
+
+```{r}
+#| label: tbl-Region-pop
+#| tbl-cap: "Institutional distrust and populism: additive and interaction models - controlled by regions"
+#| echo: false
+
+
+modelsummary(
+  list(
+    "Additive Macro-Region control"    = Regions_model_add,
+    "Interaction Macro-Region control" = Regions_model_int,
+        "Additive Macro-Region control ~ CDT"    = Regions_model_add_CDT,
+    "Interaction Macro-Region control ~ CDT" = Regions_model_int_CDT
+  ),
+  coef_map = coef_labels,
+  stars    = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo",
+  notes    = list(
+    "Logistic regression; coefficients in log-odds, standard errors in parentheses.",
+    "Age reference category: 18-34."
+  )
+)
+```
+
+For what pertains populism attitudes the patterns remain the same seen in the previous section with lower significativity; south area emerge to be the strongest predictor for populist vote as widely recognized in literature, specially in the support for 5SM.
+
+```{r}
+#| label: tbl-Region-abs
+#| tbl-cap: "Institutional distrust and abstension: additive and interaction models - controlled by regions"
+#| echo: false
+
+
+modelsummary(
+  list(
+    "Additive Macro-Region control"    = Regions_model_add_abs,
+    "Interaction Macro-Region control" = Regions_model_int_abs
+  ),
+  coef_map = coef_labels,
+  stars    = TRUE,
+  gof_omit = "IC|Log|Adj|Within|Pseudo",
+  notes    = list(
+    "Logistic regression; coefficients in log-odds, standard errors in parentheses.",
+    "Age reference category: 18-34."
+  )
+)
+```
+
+## Interpretation and substantive insights <!-- 300 words -->
+
+## Limitations and reflection <!-- 300 words -->
+
+#### Appendix A {#sec-appendixA .appendix}
+
+#### Appendix B {#sec-appendixB .appendix}
+
+#### Bibliography

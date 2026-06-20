@@ -294,10 +294,6 @@ Figure&nbsp;1: logistic regression of populist vote on distrust level
 <li>Abstention: as can be appreciated immediately from the graph comparison the effect of distrust on abstention is way stronger, starting from below 5% for distrust = 0, but with increasing marginal effects. The slope at the mean distrust level is 0.026, meaning that a 1 point increment at 6.2 would increment the probability of abstaining 2.6%</li>
 </ul>
 <div class="cell">
-<div class="cell-output cell-output-stderr">
-<pre><code>Data were 'prettified'. Consider using `terms="Institutional_distrust
-  [all]"` to get smooth plots.</code></pre>
-</div>
 <div class="cell-output-display">
 <div id="fig-abs1" class="quarto-float quarto-figure quarto-figure-center anchored">
 <figure class="quarto-float quarto-float-fig figure">
@@ -312,6 +308,49 @@ Figure&nbsp;2: Logistic regression of abstention on institutional distrust
 </div>
 </div>
 </section>
+<section id="cdt-model" class="level4">
+<h4 class="anchored" data-anchor-id="cdt-model"><strong><em>CDT model</em></strong></h4>
+<p>The results of the prior analysis highlighted a weak coefficient and lower significativeness for populism. To better understand the reason a general addictive model was performed as an explorative model; this has the advantage of not assessing a linear shape and fits the best possible value of y for each value of x.</p>
+<div class="quarto-layout-panel" data-layout-ncol="2">
+<div class="quarto-layout-row">
+<div class="cell quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="cell-output-display">
+<div id="fig-GAM_populist-vote" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-GAM_populist-vote-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="Populist-parties-quarto_files/figure-html/fig-GAM_populist-vote-1.png" class="img-fluid figure-img" width="384">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-GAM_populist-vote-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;3: GAM model for Populist vote
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+<div class="cell quarto-layout-cell" style="flex-basis: 50.0%;justify-content: flex-start;">
+<div class="cell-output-display">
+<div id="fig-GAM_abs" class="quarto-float quarto-figure quarto-figure-center anchored">
+<figure class="quarto-float quarto-float-fig figure">
+<div aria-describedby="fig-GAM_abs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+<img src="Populist-parties-quarto_files/figure-html/fig-GAM_abs-1.png" class="img-fluid figure-img" width="384">
+</div>
+<figcaption class="quarto-float-caption-bottom quarto-float-caption quarto-float-fig" id="fig-GAM_abs-caption-0ceaefa1-69ba-4598-a22c-09a6ac19f8ca">
+Figure&nbsp;4: GAM model for abstension
+</figcaption>
+</figure>
+</div>
+</div>
+</div>
+</div>
+</div>
+<p>The populist GAM model clearly presents a point in which the relationship between populist vote and distrust reverse its direction, while the same effect doesn’t happen for abstention. GAM centers values around the mean, the values on the y axis are in log-odds. Observation below the 0 have therefore minor probabilities of voting populist/abstaining than the average level of the sample.</p>
+</section>
+<section id="age-model-additive-and-interaction" class="level4">
+<h4 class="anchored" data-anchor-id="age-model-additive-and-interaction">Age model: additive and interaction</h4>
+</section>
+<section id="region-controlling" class="level4">
+<h4 class="anchored" data-anchor-id="region-controlling">Region controlling</h4>
+</section>
 </section>
 <section id="interpretation-and-substantive-insights" class="level2">
 <h2 class="anchored" data-anchor-id="interpretation-and-substantive-insights">Interpretation and substantive insights <!-- 300 words --></h2>
@@ -320,8 +359,9 @@ Figure&nbsp;2: Logistic regression of abstention on institutional distrust
 <h2 class="anchored" data-anchor-id="limitations-and-reflection">Limitations and reflection <!-- 300 words --></h2>
 
 
-<section id="bibliography" class="level4 unnumbered">
-
+<section id="bibliography" class="level4">
+<h4 class="anchored" data-anchor-id="bibliography">Bibliography</h4>
+<p>:::</p>
 
 </section>
 </section>
@@ -331,7 +371,7 @@ Figure&nbsp;2: Logistic regression of abstention on institutional distrust
 
 </div></section><section id="sec-appendixB" class="level4 appendix"><h2 class="anchored quarto-appendix-heading">Appendix B</h2><div class="quarto-appendix-contents">
 
-</div></section><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">Bibliography</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list">
+</div></section><section class="quarto-appendix-contents" role="doc-bibliography" id="quarto-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" data-entry-spacing="0" data-line-spacing="2" role="list">
 <div id="ref-chiaramonte2018" class="csl-entry" role="listitem">
 Chiaramonte, A., Emanuele, V., Maggini, N., &amp; Paparo, A. (2018). Populist Success in a Hung Parliament: The 2018 General Election in Italy. <em>South European Society and Politics</em>, <em>23</em>(4), 479–501. <a href="https://doi.org/10.1080/13608746.2018.1506513">https://doi.org/10.1080/13608746.2018.1506513</a>
 </div>
