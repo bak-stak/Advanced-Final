@@ -12,3 +12,5 @@ logistic_effects <- function(coef, int, avg) {
 
 logistic_effects(0.053, -1.822, 6.2)
   
+
+

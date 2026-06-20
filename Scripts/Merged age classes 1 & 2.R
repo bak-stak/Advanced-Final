@@ -13,6 +13,7 @@ library(tidyverse)
 library(lubridate) #used to extract year from data_nascita
 library(stargazer)
 library(sjPlot)
+library(mgcv)
 
 
 #load the ITANES database & keep interest VARs----
@@ -207,6 +208,9 @@ table(pop_age$age_class)
 
 #Addittive models-----
 
+mean(pop_age_clean$Institutional_distrust, na.rm = TRUE)
+# Mean positioning 6.2
+
 pop_age$populist_vote <- as.factor(pop_age$populist_vote)
 
 Complete_pooling <- glm(populist_vote ~ Institutional_distrust,
@@ -242,14 +246,13 @@ plot_model(CP_abstention,
 
 library(mgcv)
 
-mod_gam <- gam(populist_vote
+mod_gam_pop <- gam(populist_vote
                ~ s(Institutional_distrust)
                + age_class,
                family = binomial, data = pop_age_clean)
 
-plot(mod_gam, pages = 1, shade = TRUE)
+plot(mod_gam_pop, pages = 1, shade = TRUE)
 
-summary(mod_gam)
 
 # It seems like at a certain point the populist vote decrease for institutional distrust
 # This can suggest that after a certain ceiling non voting become the choice: this could
@@ -258,12 +261,13 @@ summary(mod_gam)
 # for non vote. Moreover we can impute a GAM for abstention
 
 
-mod_gam <- gam(abstention
+mod_gam_abs <- gam(abstention
                ~ s(Institutional_distrust)
                + age_class,
                family = binomial, data = pop_age)
 
-plot(mod_gam, pages = 1, shade = TRUE)
+plot(mod_gam_abs, pages = 1, shade = TRUE)
+
 
 # Our HP was right abstention explode for really high levels of distrust 
 # Now we can try our CDT (critical distrust threshold) model with level lower than 8
@@ -299,7 +303,6 @@ pop_age_clean <- pop_age %>%
   filter(Institutional_distrust > 0)%>%
   drop_na() %>%
   mutate(
-    log_distrust = log1p(Institutional_distrust), #without transforming them before sjPlot wouldn't recognize them so we have to perform this now
     age_class   = as.factor(age_class)
   )
 
@@ -346,36 +349,35 @@ sjPlot::plot_model(distrust_x_class_abs,
   theme_bw()
 
 
-# DBNSM Model -----
+# CDT Model -----
 
-# DBNSM addictive
+# CDT addictive
 
-DBNSM <- glm(populist_vote
-             ~ Institutional_distrust,
+CDT_add_pop <- glm(populist_vote
+             ~ Institutional_distrust + age_class,
              family = binomial(link = "logit"),
-             data = DBNSM_df)
+             data = CDT_df)
 
-stargazer(DBNSM, type = "text")
+stargazer(CDT_add_pop, type = "text")
 
-plot_model(DBNSM,
+plot_model(CDT_add_pop,
            type = "pred",
            terms = "Institutional_distrust",
            show.legend = TRUE) + 
   theme_minimal()
 
-# DBNSM Interaction 
+# CDT Interaction 
 
-DBNSM_df$age_class <- relevel(factor(DBNSM_df$age_class), ref = "18-34")
 
-DBNSM_distrust_int <- glm(populist_vote
+CDT_pop_int <- glm(populist_vote
                           ~ Institutional_distrust
                           * age_class,
                           family = binomial(link = "logit"),
-                          data = DBNSM_df)
+                          data = CDT_df)
 
-stargazer(DBNSM_distrust_int, type = "text")
+stargazer(CDT_pop_int, type = "text")
 
-plot_model(DBNSM_distrust_int, 
+plot_model(CDT_pop_int, 
            type = "int",
            ci.lvl = NA,
            show.legend = TRUE,
@@ -385,9 +387,8 @@ plot_model(DBNSM_distrust_int,
 table(pop_age_clean$age_class)     
 
 
-# Control by FDI
-# Control by macro-regions / instruction 
-# Control by M5S/League
+# Control by macro-regions  
+
 
 #Macro regions controlling ----
 
@@ -401,11 +402,9 @@ Regions_df <- ITANES_2022_Post_electoral%>%
   select(seriale, Macro_region)
 
 Regions_df <- left_join(pop_age_clean, Regions_df, by = join_by(seriale))%>%
-  mutate(Macro_region = factor(Macro_region))
+  mutate(Macro_region = factor(Macro_region))%>%
+  filter(Institutional_distrust<8)
 
-# Selection of the reference class
-
-Regions_df$age_class <- relevel(factor(Regions_df$age_class), ref = "18-34")
 
 #Pure addittive model of populist vote with control
 
